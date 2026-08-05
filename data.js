@@ -1,0 +1,23 @@
+const AUTO_DATA = {
+  "pe300": 0.0,
+  "high300": 0,
+  "trend300": "above",
+  "price300": 4.714,
+  "pe500": 0.0,
+  "high500": 0,
+  "trend500": "above",
+  "price500": 7.815,
+  "peMed": 0.0,
+  "highMed": 0,
+  "trendMed": "above",
+  "priceMed": 0.387,
+  "peTech": 50,
+  "highTech": 0,
+  "trendTech": "above",
+  "priceTech": 1.29,
+  "peBond": 0,
+  "highBond": 0,
+  "trendBond": "above",
+  "priceBond": 135.457,
+  "update_time": "2026-08-05 15:03:55"
+};
