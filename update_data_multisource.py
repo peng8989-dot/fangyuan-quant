@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-方圆量化 - 多数据源自动更新 data.js (v4.0)
-支持：东方财富 / 腾讯 / 网易，自动切换
+方圆量化 - 全自动数据更新（防崩溃版）
+即使全部接口失败，也能正常生成 data.js
 """
 
-import requests
 import json
 import time
 import random
-import os
+import traceback
 from datetime import datetime
+
+try:
+    import requests
+except ImportError:
+    # 万一没有 requests 库，也不会让程序崩溃
+    requests = None
 
 # ================== 配置 ==================
 ETF = {
@@ -20,51 +25,45 @@ ETF = {
     "Tech":{"sym": "515000", "idx": "931087", "name": "科技ETF"},
     "Bond":{"sym": "511260", "idx": None, "name": "国债ETF"}
 }
+
 OUTPUT = "data.js"
 
-# 如果你有稳定的HTTP代理，在此填写（例如 'http://127.0.0.1:10809'）
-PROXY = os.environ.get("HTTP_PROXY", None)
-session = requests.Session()
-if PROXY:
-    session.proxies = {"http": PROXY, "https": PROXY}
-session.headers.update({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Referer": "https://quote.eastmoney.com/",
-})
-
 def safe_get(url, params=None, retry=2, timeout=8):
-    for i in range(retry):
-        try:
-            resp = session.get(url, params=params, timeout=timeout)
-            resp.raise_for_status()
-            return resp
-        except:
-            time.sleep(1.5)
+    """绝对安全的请求，失败返回 None"""
+    if not requests:
+        return None
+    try:
+        for i in range(retry):
+            try:
+                resp = requests.get(url, params=params, timeout=timeout,
+                                    headers={"User-Agent": "Mozilla/5.0"})
+                resp.raise_for_status()
+                return resp
+            except:
+                time.sleep(1.5)
+    except:
+        pass
     return None
 
-# ---------- PE分位（多源） ----------
+# ---------- PE分位（多源）----------
 def pe_eastmoney(idx):
-    """东方财富直接返回分位"""
-    r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
-                 {"secid": f"1.{idx}", "fields": "f134"})
-    if r:
-        try:
-            pct = r.json()["data"]["f134"]
+    try:
+        r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
+                     {"secid": f"1.{idx}", "fields": "f134"})
+        if r:
+            pct = r.json().get("data", {}).get("f134")
             if pct is not None:
                 return round(float(pct), 1)
-        except: pass
-    return None
-
-def pe_tencent(idx):
-    """腾讯不支持分位，跳过"""
+    except:
+        pass
     return None
 
 def pe_netease(idx):
-    """网易历史PE，计算近5年分位"""
     try:
         url = f"http://quotes.money.163.com/service/chddata.html?code=1{idx}&start=20200101&end=20301231&fields=TCLOSE;PE"
         r = safe_get(url, retry=2, timeout=12)
-        if not r: return None
+        if not r:
+            return None
         lines = r.text.strip().split('\n')
         pe_vals = []
         for line in lines[1:]:
@@ -72,120 +71,150 @@ def pe_netease(idx):
             if len(parts) >= 9:
                 try:
                     pe = float(parts[8])
-                    if pe > 0: pe_vals.append(pe)
-                except: pass
-        if len(pe_vals) < 100: return None
+                    if pe > 0:
+                        pe_vals.append(pe)
+                except:
+                    pass
+        if len(pe_vals) < 100:
+            return None
         recent = pe_vals[-1250:] if len(pe_vals) > 1250 else pe_vals
         cur = recent[-1]
         pct = sum(1 for x in recent if x < cur) / len(recent) * 100
         return round(pct, 1)
-    except: return None
+    except:
+        return None
 
-def get_pe(key, idx):
-    """按优先级尝试多个源"""
-    for func, name in [(pe_eastmoney, "东方财富"), (pe_netease, "网易")]:
-        val = func(idx)
-        if val is not None:
-            print(f"  PE分位({name}): {val}%")
-            return val
-    print("  PE分位全部失败，使用默认50%")
+def get_pe(idx):
+    for func in [pe_eastmoney, pe_netease]:
+        try:
+            val = func(idx)
+            if val is not None:
+                return val
+        except:
+            pass
     return 50
 
-# ---------- K线（日/周） ----------
+# ---------- K线 ----------
 def kline_eastmoney(sym, period="daily"):
-    klt = 101 if period == "daily" else 102
-    r = safe_get("https://push2his.eastmoney.com/api/qt/stock/kline/get",
-                 {"secid": f"1.{sym}", "klt": klt, "fqt": 1, "lmt": 1250,
-                  "fields1": "f1,f2,f3,f4,f5,f6",
-                  "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"})
-    if not r: return None
     try:
+        klt = 101 if period == "daily" else 102
+        params = {
+            "secid": f"1.{sym}",
+            "klt": klt,
+            "fqt": 1,
+            "lmt": 1250,
+            "fields1": "f1,f2,f3,f4,f5,f6",
+            "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"
+        }
+        r = safe_get("https://push2his.eastmoney.com/api/qt/stock/kline/get", params=params)
+        if not r:
+            return None
         lines = r.json()["data"]["klines"]
-        recs = []
-        for line in lines:
-            p = line.split(",")
-            recs.append({"high": float(p[3]), "close": float(p[2])})
-        return recs
-    except: return None
+        return [{"high": float(p[3]), "close": float(p[2])} for p in [l.split(",") for l in lines]]
+    except:
+        return None
 
 def kline_tencent(sym, period="daily"):
-    ktype = "day" if period == "daily" else "week"
-    url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh{sym},{ktype},,,1250,qfq"
-    r = safe_get(url, timeout=10)
-    if not r: return None
     try:
+        ktype = "day" if period == "daily" else "week"
+        url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh{sym},{ktype},,,1250,qfq"
+        r = safe_get(url, timeout=10)
+        if not r:
+            return None
         data = r.json()["data"]["sh"+sym]
         kls = data.get(ktype, []) or data.get("day", [])
-        recs = [{"high": float(k[3]), "close": float(k[2])} for k in kls[-1250:]]
-        return recs
-    except: return None
+        return [{"high": float(k[3]), "close": float(k[2])} for k in kls[-1250:]]
+    except:
+        return None
 
 def get_kline(sym, period="daily"):
-    for func, name in [(kline_eastmoney, "东方财富"), (kline_tencent, "腾讯")]:
-        val = func(sym, period)
-        if val:
-            return val
-    return None
+    for func in [kline_eastmoney, kline_tencent]:
+        try:
+            val = func(sym, period)
+            if val:
+                return val
+        except:
+            pass
+    return []
 
 # ---------- 实时价格 ----------
 def price_tencent(sym):
-    r = safe_get(f"http://qt.gtimg.cn/q=sh{sym}", timeout=5)
-    if r:
-        parts = r.text.split('~')
-        if len(parts) > 3:
-            try: return float(parts[3])
-            except: pass
+    try:
+        r = safe_get(f"http://qt.gtimg.cn/q=sh{sym}", timeout=5)
+        if r:
+            parts = r.text.split('~')
+            if len(parts) > 3:
+                return float(parts[3])
+    except:
+        pass
     return None
 
 def price_eastmoney(sym):
-    r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
-                 {"secid": f"1.{sym}", "fields": "f43"})
-    if r:
-        try:
+    try:
+        r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
+                     {"secid": f"1.{sym}", "fields": "f43"})
+        if r:
             return r.json()["data"]["f43"] / 1000
-        except: pass
+    except:
+        pass
     return None
 
 def get_price(sym):
-    for func, name in [(price_tencent, "腾讯"), (price_eastmoney, "东方财富")]:
-        val = func(sym)
-        if val: return round(val, 3)
+    for func in [price_tencent, price_eastmoney]:
+        try:
+            val = func(sym)
+            if val:
+                return round(val, 3)
+        except:
+            pass
     return None
 
-# ---------- 计算 ----------
+# ---------- 计算趋势 ----------
 def calc_trend(weekly):
-    if not weekly or len(weekly) < 20: return "above"
-    closes = [k["close"] for k in weekly[-20:]]
-    ma20 = sum(closes) / 20
-    if closes[-1] > ma20: return "above"
-    if len(closes) >= 2 and closes[-2] > ma20: return "below1"
-    return "below2"
+    try:
+        if len(weekly) >= 20:
+            closes = [k["close"] for k in weekly[-20:]]
+            ma20 = sum(closes) / 20
+            if closes[-1] > ma20:
+                return "above"
+            if closes[-2] > ma20:
+                return "below1"
+            return "below2"
+    except:
+        pass
+    return "above"
 
+# ---------- 主流程 ----------
 def main():
     result = {}
     for key, cfg in ETF.items():
         print(f"\n处理 {cfg['name']} ...")
-        # PE
-        if cfg["idx"]:
-            result[f"pe{key}"] = get_pe(key, cfg["idx"])
-        else:
-            result[f"pe{key}"] = 0
-        # 日线最高价
-        daily = get_kline(cfg["sym"], "daily")
-        high = round(max(k["high"] for k in daily), 3) if daily else 0
-        result[f"high{key}"] = high
-        print(f"  最高价: {high}")
-        # 周线趋势
-        weekly = get_kline(cfg["sym"], "weekly")
-        trend = calc_trend(weekly)
-        result[f"trend{key}"] = trend
-        print(f"  周线趋势: {trend}")
-        # 价格
-        price = get_price(cfg["sym"])
-        if price:
-            result[f"price{key}"] = price
-            print(f"  当前价: {price}")
-        time.sleep(random.uniform(1.5, 3))
+        try:
+            if cfg["idx"]:
+                result[f"pe{key}"] = get_pe(cfg["idx"])
+            else:
+                result[f"pe{key}"] = 0
+
+            daily = get_kline(cfg["sym"], "daily")
+            high = round(max(k["high"] for k in daily), 3) if daily else 0
+            result[f"high{key}"] = high
+
+            weekly = get_kline(cfg["sym"], "weekly")
+            result[f"trend{key}"] = calc_trend(weekly)
+
+            price = get_price(cfg["sym"])
+            if price:
+                result[f"price{key}"] = price
+
+            print(f"  PE: {result[f'pe{key}']}%  最高: {high}  趋势: {result[f'trend{key}']}  现价: {price}")
+        except Exception as e:
+            print(f"  处理 {cfg['name']} 时出错，使用默认值")
+            traceback.print_exc()
+            # 为该 ETF 填入绝对安全的默认值
+            result[f"pe{key}"] = 50 if cfg["idx"] else 0
+            result[f"high{key}"] = 0
+            result[f"trend{key}"] = "above"
+        time.sleep(random.uniform(1, 2))
 
     result["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(OUTPUT, "w", encoding="utf-8") as f:
