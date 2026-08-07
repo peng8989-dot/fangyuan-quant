@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-方圆量化 - 全自动数据更新（科技→半导体版）
-适配 512480 半导体 ETF，指数代码 H30184
+方圆量化 - 全自动数据更新（含观察列表）
+持仓：510300, 510500, 512010, 512480, 511260
+观察：159992 创新药ETF, 512100 中证1000ETF
 """
 
 import json
@@ -16,52 +17,51 @@ try:
 except ImportError:
     requests = None
 
-# ================== ETF 配置（已替换科技→半导体） ==================
+# ================== ETF 配置 ==================
 ETF_CONFIG = {
+    # -------- 持仓品种 --------
     "300": {
         "symbol": "510300",
         "name": "沪深300ETF",
-        "index_code": "000300",        # 沪深300指数
+        "index_code": "000300",
     },
     "500": {
         "symbol": "510500",
         "name": "中证500ETF",
-        "index_code": "000905",        # 中证500指数
+        "index_code": "000905",
     },
     "Med": {
         "symbol": "512010",
         "name": "医药ETF",
-        "index_code": "000991",        # 医药100指数
+        "index_code": "000991",
     },
     "Tech": {
-        "symbol": "512480",            # 改为半导体ETF
+        "symbol": "512480",
         "name": "半导体ETF",
-        "index_code": "H30184",        # 中证全指半导体指数
-    },
-    "Inn": {
-    "symbol": "159992",
-    "name": "创新药ETF",
-    "index_code": "931152",        # 创新药产业指数
-    "pe_needed": True,
-    },
-    "1000": {
-    "symbol": "512100",
-    "name": "中证1000ETF",
-    "index_code": "000852",        # 中证1000指数
-    "pe_needed": True,
+        "index_code": "H30184",
     },
     "Bond": {
         "symbol": "511260",
         "name": "国债ETF",
         "index_code": None,
-    }
+    },
+    # -------- 观察品种 --------
+    "Inn": {
+        "symbol": "159992",
+        "name": "创新药ETF",
+        "index_code": "931152",
+    },
+    "1000": {
+        "symbol": "512100",
+        "name": "中证1000ETF",
+        "index_code": "000852",
+    },
 }
 
 OUTPUT_FILE = "data.js"
 
 # ================== 网络请求（防崩溃） ==================
 def safe_get(url, params=None, retry=2, timeout=8):
-    """绝对安全的GET请求，失败返回None"""
     if not requests:
         return None
     try:
@@ -79,10 +79,20 @@ def safe_get(url, params=None, retry=2, timeout=8):
 
 # ================== PE 分位（东方财富优先） ==================
 def pe_eastmoney(idx):
-    """东方财富直接返回市盈率分位（f134）"""
     try:
-        # 指数代码格式：沪市指数加前缀 1.
-        secid = f"1.{idx}"
+        secid = f"1.{idx}" if not idx.startswith("9") else f"0.{idx}"  # 深市指数以9开头
+        # 实际上东方财富指数代码深市为 0.xxx，但此处统一尝试
+        r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
+                     {"secid": secid, "fields": "f134"})
+        if r:
+            pct = r.json().get("data", {}).get("f134")
+            if pct is not None:
+                return round(float(pct), 1)
+    except:
+        pass
+    # 如果深市失败，尝试另一种前缀
+    try:
+        secid = f"0.{idx}"
         r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
                      {"secid": secid, "fields": "f134"})
         if r:
@@ -94,9 +104,11 @@ def pe_eastmoney(idx):
     return None
 
 def pe_netease(idx):
-    """网易历史PE，计算近5年分位（备用）"""
     try:
-        url = f"http://quotes.money.163.com/service/chddata.html?code=1{idx}&start=20200101&end=20301231&fields=TCLOSE;PE"
+        # 网易接口需要指数代码前缀1（沪市）或0（深市）
+        prefix = "0" if idx.startswith(("9", "0")) else "1"
+        code = f"{prefix}{idx}"
+        url = f"http://quotes.money.163.com/service/chddata.html?code={code}&start=20200101&end=20301231&fields=TCLOSE;PE"
         r = safe_get(url, retry=2, timeout=12)
         if not r:
             return None
@@ -121,7 +133,6 @@ def pe_netease(idx):
         return None
 
 def get_pe(idx):
-    """依次尝试东方财富、网易，均失败返回50"""
     for func in [pe_eastmoney, pe_netease]:
         try:
             val = func(idx)
@@ -133,11 +144,17 @@ def get_pe(idx):
 
 # ================== K线数据（东方财富优先） ==================
 def kline_eastmoney(sym, period="daily"):
-    """东方财富K线，返回 [{high, close}]"""
     try:
+        market = "0" if sym.startswith(("1", "5")) and len(sym) == 6 else "1"
+        # 实际上深市ETF代码以159开头，沪市以51开头
+        if sym.startswith("159") or sym.startswith("16"):
+            market = "0"
+        else:
+            market = "1"
+        secid = f"{market}.{sym}"
         klt = 101 if period == "daily" else 102
         params = {
-            "secid": f"1.{sym}",
+            "secid": secid,
             "klt": klt,
             "fqt": 1,
             "lmt": 1250,
@@ -153,21 +170,24 @@ def kline_eastmoney(sym, period="daily"):
         return None
 
 def kline_tencent(sym, period="daily"):
-    """腾讯K线，返回 [{high, close}]"""
     try:
+        # 腾讯接口需要带市场前缀
+        if sym.startswith("159") or sym.startswith("16"):
+            code = f"sz{sym}"
+        else:
+            code = f"sh{sym}"
         ktype = "day" if period == "daily" else "week"
-        url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=sh{sym},{ktype},,,1250,qfq"
+        url = f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={code},{ktype},,,1250,qfq"
         r = safe_get(url, timeout=10)
         if not r:
             return None
-        data = r.json()["data"]["sh"+sym]
+        data = r.json()["data"][code]
         kls = data.get(ktype, []) or data.get("day", [])
         return [{"high": float(k[3]), "close": float(k[2])} for k in kls[-1250:]]
     except:
         return None
 
 def get_kline(sym, period="daily"):
-    """获取K线，优先东方财富，失败则腾讯"""
     for func in [kline_eastmoney, kline_tencent]:
         try:
             val = func(sym, period)
@@ -179,9 +199,12 @@ def get_kline(sym, period="daily"):
 
 # ================== 实时价格（腾讯优先） ==================
 def price_tencent(sym):
-    """腾讯实时行情"""
     try:
-        r = safe_get(f"http://qt.gtimg.cn/q=sh{sym}", timeout=5)
+        if sym.startswith("159") or sym.startswith("16"):
+            code = f"sz{sym}"
+        else:
+            code = f"sh{sym}"
+        r = safe_get(f"http://qt.gtimg.cn/q={code}", timeout=5)
         if r:
             parts = r.text.split('~')
             if len(parts) > 3:
@@ -191,10 +214,10 @@ def price_tencent(sym):
     return None
 
 def price_eastmoney(sym):
-    """东方财富实时价格"""
     try:
+        market = "0" if (sym.startswith("159") or sym.startswith("16")) else "1"
         r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
-                     {"secid": f"1.{sym}", "fields": "f43"})
+                     {"secid": f"{market}.{sym}", "fields": "f43"})
         if r:
             return r.json()["data"]["f43"] / 1000
     except:
@@ -202,7 +225,6 @@ def price_eastmoney(sym):
     return None
 
 def get_price(sym):
-    """获取实时价格，优先腾讯，失败则东方财富"""
     for func in [price_tencent, price_eastmoney]:
         try:
             val = func(sym)
@@ -214,7 +236,6 @@ def get_price(sym):
 
 # ================== 趋势计算 ==================
 def calc_trend(weekly):
-    """根据周线计算趋势：above / below1 / below2"""
     try:
         if len(weekly) >= 20:
             closes = [k["close"] for k in weekly[-20:]]
@@ -265,23 +286,20 @@ def update_all():
         except Exception as e:
             print(f"  处理 {cfg['name']} 时出错，使用默认值")
             traceback.print_exc()
-            # 填入默认值防止崩溃
-            result[f"pe{key}"] = 50 if cfg["index_code"] else 0
+            result[f"pe{key}"] = 50 if cfg.get("index_code") else 0
             result[f"high{key}"] = 0
             result[f"trend{key}"] = "above"
 
-        # 随机延迟，避免请求过快
         time.sleep(random.uniform(1.5, 3))
 
     result["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 写入 data.js
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("const AUTO_DATA = " + json.dumps(result, ensure_ascii=False, indent=2) + ";")
     print(f"\n✅ 已生成 {OUTPUT_FILE}，更新时间：{result['update_time']}")
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("  方圆量化系统 - 数据自动更新（半导体版）")
+    print("  方圆量化系统 - 数据自动更新（含观察列表）")
     print("=" * 50)
     update_all()
