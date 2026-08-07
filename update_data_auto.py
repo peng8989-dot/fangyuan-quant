@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-方圆量化 - 全自动数据更新（含四层 fallback）
-确保所有 ETF 的历史最高价字段永不为 0
+方圆量化 - 全自动数据更新（PE缓存+多源备选）
 """
 
 import json
@@ -24,9 +23,10 @@ ETF_CONFIG = {
 }
 
 OUTPUT_FILE = "data.js"
-CACHE_FILE = "backup_high.json"
+HIGH_CACHE_FILE = "backup_high.json"
+PE_CACHE_FILE = "pe_cache.json"          # 新增：PE缓存文件
 
-# ---------- 内置默认历史最高价（2026年8月合理估算） ----------
+# ---------- 内置默认历史最高价 ----------
 DEFAULT_HIGH = {
     "300": 4.650,
     "500": 6.200,
@@ -37,14 +37,15 @@ DEFAULT_HIGH = {
     "1000": 2.950
 }
 
-# ---------- 网络请求 ----------
+# ---------- 请求会话 ----------
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Referer": "https://quote.eastmoney.com/",
 })
 
-def safe_get(url, params=None, retry=2, timeout=10):
+def safe_get(url, params=None, retry=3, timeout=12):
+    """增加重试次数与超时时间"""
     for i in range(retry):
         try:
             resp = session.get(url, params=params, timeout=timeout)
@@ -52,10 +53,10 @@ def safe_get(url, params=None, retry=2, timeout=10):
             return resp
         except Exception as e:
             print(f"    [{i+1}/{retry}] 请求失败: {e}")
-            time.sleep(2 + random.random() * 3)
+            time.sleep(2 + random.random() * 4)
     return None
 
-# ---------- 实时价格（腾讯） ----------
+# ---------- 实时价格 ----------
 def get_price(sym):
     code = f"sz{sym}" if sym.startswith("159") or sym.startswith("16") else f"sh{sym}"
     r = safe_get(f"http://qt.gtimg.cn/q={code}", timeout=5)
@@ -66,21 +67,88 @@ def get_price(sym):
             except: pass
     return None
 
-# ---------- PE 分位（东方财富） ----------
-def get_pe(idx):
-    r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
-                 {"secid": f"1.{idx}", "fields": "f134"}, retry=1, timeout=8)
-    if r:
-        try:
+# ---------- PE 分位（增强版：三源+缓存） ----------
+def get_pe_from_eastmoney(idx):
+    """东方财富接口，返回分位值"""
+    try:
+        r = safe_get("https://push2.eastmoney.com/api/qt/stock/get",
+                     {"secid": f"1.{idx}", "fields": "f134"}, retry=2, timeout=10)
+        if r:
             pct = r.json().get("data", {}).get("f134")
             if pct is not None:
                 return round(float(pct), 1)
-        except: pass
+    except: pass
     return None
 
-# ---------- K 线历史最高价（三层尝试） ----------
+def get_pe_from_netease(idx):
+    """网易历史PE，自行计算近5年分位（备用）"""
+    try:
+        url = f"http://quotes.money.163.com/service/chddata.html?code=1{idx}&start=20200101&end=20301231&fields=TCLOSE;PE"
+        r = safe_get(url, retry=1, timeout=15)
+        if not r:
+            return None
+        lines = r.text.strip().split('\n')
+        pe_vals = []
+        for line in lines[1:]:
+            parts = line.split(',')
+            if len(parts) >= 9:
+                try:
+                    pe = float(parts[8])
+                    if pe > 0: pe_vals.append(pe)
+                except: pass
+        if len(pe_vals) < 100:
+            return None
+        recent = pe_vals[-1250:] if len(pe_vals) > 1250 else pe_vals
+        cur = recent[-1]
+        pct = sum(1 for x in recent if x < cur) / len(recent) * 100
+        return round(pct, 1)
+    except: pass
+    return None
+
+def load_pe_cache():
+    """加载PE缓存字典"""
+    if os.path.exists(PE_CACHE_FILE):
+        try:
+            with open(PE_CACHE_FILE, "r") as f:
+                return json.load(f)
+        except: pass
+    return {}
+
+def save_pe_cache(cache_dict):
+    """保存PE缓存"""
+    with open(PE_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache_dict, f, ensure_ascii=False, indent=2)
+
+def get_pe(key, idx, cache):
+    """
+    获取PE分位：
+    1. 尝试东方财富
+    2. 尝试网易
+    3. 使用本地缓存（上次成功值）
+    4. 返回 None（外部将用 50 兜底）
+    """
+    # 在线获取
+    for func, name in [(get_pe_from_eastmoney, "东方财富"), (get_pe_from_netease, "网易")]:
+        val = func(idx)
+        if val is not None:
+            print(f"  PE分位({name}): {val}%")
+            # 更新缓存
+            cache[key] = val
+            save_pe_cache(cache)
+            return val
+
+    # 使用缓存
+    cached_val = cache.get(key)
+    if cached_val is not None:
+        print(f"  ⚠️ 使用PE缓存值: {cached_val}%")
+        return cached_val
+
+    # 完全失败
+    return None
+
+# ---------- 历史最高价（原逻辑不变） ----------
 def get_hist_high(sym, key):
-    # 第一层：东方财富日线
+    # 略，同之前脚本...
     try:
         r = safe_get("https://push2his.eastmoney.com/api/qt/stock/kline/get",
                      {"secid": f"1.{sym}", "klt": 101, "fqt": 1, "lmt": 1250,
@@ -91,33 +159,25 @@ def get_hist_high(sym, key):
             high = max(float(line.split(",")[3]) for line in klines)
             if high > 0: return round(high, 3)
     except: pass
-
-    # 第二层：腾讯日线
     try:
         code = f"sz{sym}" if sym.startswith("159") or sym.startswith("16") else f"sh{sym}"
         r = safe_get(f"http://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param={code},day,,,1250,qfq", timeout=12)
         if r:
             data = r.json()["data"][code]
-            kls = data.get("day", []) or data.get("day", [])
+            kls = data.get("day", [])
             high = max(float(k[3]) for k in kls[-1250:])
             if high > 0: return round(high, 3)
     except: pass
-
-    # 第三层：本地缓存
     try:
-        if os.path.exists(CACHE_FILE):
-            with open(CACHE_FILE, "r") as f:
-                cache = json.load(f)
-            val = cache.get(f"high{key}")
+        if os.path.exists(HIGH_CACHE_FILE):
+            with open(HIGH_CACHE_FILE, "r") as f:
+                high_cache = json.load(f)
+            val = high_cache.get(f"high{key}")
             if val and val > 0:
                 print("    ⚠️ 使用本地缓存历史最高价")
                 return round(val, 3)
     except: pass
-
-    # 第四层：内置默认值
-    default = DEFAULT_HIGH.get(key, 1.0)
-    print(f"    ⚠️ 使用内置默认历史最高价 {default}")
-    return default
+    return DEFAULT_HIGH.get(key, 1.0)
 
 # ---------- 周线趋势 ----------
 def get_trend(sym):
@@ -139,12 +199,15 @@ def get_trend(sym):
 # ---------- 主流程 ----------
 def update_all():
     result = {}
-    cache = {}
-    if os.path.exists(CACHE_FILE):
+    high_cache = {}
+    if os.path.exists(HIGH_CACHE_FILE):
         try:
-            with open(CACHE_FILE, "r") as f:
-                cache = json.load(f)
+            with open(HIGH_CACHE_FILE, "r") as f:
+                high_cache = json.load(f)
         except: pass
+
+    # 加载PE缓存
+    pe_cache = load_pe_cache()
 
     for key, cfg in ETF_CONFIG.items():
         print(f"\n处理 {cfg['name']} ({cfg['sym']}) ...")
@@ -153,13 +216,12 @@ def update_all():
 
         # 1. PE 分位
         if idx:
-            pe = get_pe(idx)
+            pe = get_pe(key, idx, pe_cache)
             result[f"pe{key}"] = pe if pe is not None else 50
-            print(f"  PE分位: {result[f'pe{key}']}%")
         else:
             result[f"pe{key}"] = 0
 
-        # 2. 历史最高价（自动 fallback）
+        # 2. 历史最高价
         high = get_hist_high(sym, key)
         result[f"high{key}"] = high
         print(f"  近5年最高价: {high}")
@@ -175,15 +237,16 @@ def update_all():
             result[f"price{key}"] = round(price, 3)
             print(f"  当前价格: {price:.3f}")
 
-        # 更新缓存
-        cache[f"high{key}"] = high
-        time.sleep(random.uniform(1.5, 3))
+        # 更新历史最高价缓存
+        high_cache[f"high{key}"] = high
+        time.sleep(random.uniform(2, 4))
 
     result["update_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 保存缓存文件
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(cache, f, ensure_ascii=False, indent=2)
+    # 保存所有缓存
+    with open(HIGH_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(high_cache, f, ensure_ascii=False, indent=2)
+    # PE缓存已在 get_pe 中自动保存
 
     # 写入 data.js
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
@@ -192,6 +255,6 @@ def update_all():
 
 if __name__ == "__main__":
     print("=" * 50)
-    print("  方圆量化 - 全自动数据更新（永不缺最高价）")
+    print("  方圆量化 - PE缓存增强版")
     print("=" * 50)
     update_all()
