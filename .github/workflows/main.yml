@@ -2,31 +2,23 @@ name: 每日更新 data.js
 
 on:
   schedule:
-    # 北京时间 18:00 (UTC 10:00) 周一至周五
-    - cron: '0 10 * * 1-5'
-  workflow_dispatch:   # 允许手动触发
+    - cron: '0 10 * * 1-5'   # 北京时间 18:00
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: 拉取代码
-        uses: actions/checkout@v4
-
-      - name: 安装 Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
-
-      - name: 安装依赖
-        run: pip install requests
-
-      - name: 运行数据更新脚本
-        run: python update_data_multisource.py
-
-      - name: 提交 data.js 到仓库
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'actions@github.com'
-          git add data.js
-          git diff --quiet && git diff --staged --quiet || (git commit -m "每日数据自动更新" && git push)
+          python-version: '3.12'
+      - run: pip install requests
+      - run: python update_data_auto.py
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data.js backup_high.json
+          git diff --staged --quiet || (git commit -m "每日数据更新 [skip ci]" && git push)
