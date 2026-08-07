@@ -37,7 +37,7 @@ DEFAULT_HIGH = {
     "1000": 2.950
 }
 
-# ---------- 网络请求（多重试、长超时） ----------
+# ---------- 网络请求 ----------
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -121,7 +121,6 @@ def get_hist_high(sym, key):
 
 # ---------- 周线趋势 ----------
 def get_trend(sym):
-    # 优先东方财富周线
     try:
         r = safe_get("https://push2his.eastmoney.com/api/qt/stock/kline/get",
                      {"secid": f"1.{sym}", "klt": 102, "fqt": 1, "lmt": 120,
@@ -135,13 +134,11 @@ def get_trend(sym):
                 if len(closes) >= 2 and closes[-2] > ma20: return "below1"
                 return "below2"
     except: pass
-    # 默认 above
     return "above"
 
 # ---------- 主流程 ----------
 def update_all():
     result = {}
-    # 加载旧缓存（如果存在）
     cache = {}
     if os.path.exists(CACHE_FILE):
         try:
