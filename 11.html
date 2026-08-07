@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>「方圆」量化投资系统 · 科技→半导体</title>
+    <title>「方圆」量化投资系统 · 含观察列表</title>
     <style>
         :root { --bg: #f0f2f5; --card-bg: #fff; --primary: #1a365d; --text: #2d3748; --border: #e2e8f0; --danger: #e53e3e; --warning: #dd6b20; --success: #38a169; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,13 +37,14 @@
         .batch-row input { width: 90px; }
         .summary-cell { font-weight: 700; }
         .peak-display { font-weight: 700; color: #2c5282; }
+        .observe-row { background: #fefce8; }
     </style>
     <script src="data.js"></script>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>📐 「方圆」量化投资系统</h1><div style="font-size:0.85em;opacity:0.85;">科技→半导体 · 初始资金 ¥100,000</div></div>
+        <div><h1>📐 「方圆」量化投资系统</h1><div style="font-size:0.85em;opacity:0.85;">5持仓 + 2观察 · 初始资金 ¥100,000</div></div>
         <div class="header-stats" style="display:flex; gap:14px;">
             <div class="stat-box"><div class="stat-val" id="totalAssets">¥100,000</div><div class="stat-label">总资产</div></div>
             <div class="stat-box"><div class="stat-val" id="stockRatio">60.0%</div><div class="stat-label">股票仓位</div></div>
@@ -60,27 +61,31 @@
     <!-- 规则一：资金与仓位 -->
     <div class="card"><div class="card-header">📋 资金与仓位规则</div><div class="card-body"><table><tr><th>规则</th><th>内容</th><th>状态</th></tr><tr><td>资金性质</td><td>3年闲钱，无杠杆</td><td><span class="tag tag-success">✓</span></td></tr><tr><td>股债基准</td><td>股票60% 债券40%</td><td id="stockBondStatus"></td></tr><tr><td>再平衡触发</td><td>股票≥70%或≤50%</td><td id="rebalanceStatus"></td></tr><tr><td>单只上限</td><td>≤总资产10%</td><td id="singleLimitStatus"></td></tr></table></div></div>
 
-    <!-- 规则二：标的池 -->
+    <!-- 规则二：标的池（含观察） -->
     <div class="card"><div class="card-header">📦 标的池（估值参考）</div><div class="card-body"><table><tr><th>层级</th><th>ETF</th><th>代码</th><th>PE分位</th><th>近5年最高</th><th>规模</th><th>费率</th></tr>
     <tr><td>核心</td><td>沪深300</td><td>510300</td><td><input type="number" id="pe300" value="45" step="0.1" oninput="updateAll()">%</td><td id="histHigh300">—</td><td>~1800亿</td><td>0.15%</td></tr>
     <tr><td>核心</td><td>中证500</td><td>510500</td><td><input type="number" id="pe500" value="36" step="0.1" oninput="updateAll()">%</td><td id="histHigh500">—</td><td>~700亿</td><td>0.15%</td></tr>
     <tr><td>卫星</td><td>医药ETF</td><td>512010</td><td><input type="number" id="peMed" value="28.5" step="0.1" oninput="updateAll()">%</td><td id="histHighMed">—</td><td>~45亿</td><td>0.35%</td></tr>
     <tr><td>卫星</td><td>半导体ETF</td><td>512480</td><td><input type="number" id="peTech" value="60" step="0.1" oninput="updateAll()">%</td><td id="histHighTech">—</td><td>~200亿</td><td>0.50%</td></tr>
     <tr><td>债券</td><td>国债ETF</td><td>511260</td><td>—</td><td id="histHighBond">—</td><td>~55亿</td><td>0.15%</td></tr>
+    <tr class="observe-row"><td>👀观察</td><td>创新药ETF</td><td>159992</td><td><input type="number" id="peInn" value="40" step="0.1" oninput="updateAll()">%</td><td id="histHighInn">—</td><td>~80亿</td><td>0.50%</td></tr>
+    <tr class="observe-row"><td>👀观察</td><td>中证1000ETF</td><td>512100</td><td><input type="number" id="pe1000" value="50" step="0.1" oninput="updateAll()">%</td><td id="histHigh1000">—</td><td>~150亿</td><td>0.15%</td></tr>
     </table></div></div>
 
-    <!-- 规则三：资金分配 -->
-    <div class="card"><div class="card-header">💰 资金分配</div><div class="card-body"><table><tr><th>ETF</th><th>比例</th><th>分配额</th><th>当前市值</th><th>偏差</th></tr><tr><td>沪深300</td><td>25%</td><td>¥25,000</td><td id="mv300"></td><td id="dev300"></td></tr><tr><td>中证500</td><td>25%</td><td>¥25,000</td><td id="mv500"></td><td id="dev500"></td></tr><tr><td>医药ETF</td><td>5%</td><td>¥5,000</td><td id="mvMed"></td><td id="devMed"></td></tr><tr><td>半导体ETF</td><td>5%</td><td>¥5,000</td><td id="mvTech"></td><td id="devTech"></td></tr><tr><td>国债ETF</td><td>40%</td><td>¥40,000</td><td id="mvBond"></td><td id="devBond"></td></tr><tr style="font-weight:700;"><td colspan="3">合计</td><td id="mvTotal"></td><td id="devTotal"></td></tr></table></div></div>
+    <!-- 规则三：资金分配（仅持仓） -->
+    <div class="card"><div class="card-header">💰 资金分配（观察品种不参与）</div><div class="card-body"><table><tr><th>ETF</th><th>比例</th><th>分配额</th><th>当前市值</th><th>偏差</th></tr><tr><td>沪深300</td><td>25%</td><td>¥25,000</td><td id="mv300"></td><td id="dev300"></td></tr><tr><td>中证500</td><td>25%</td><td>¥25,000</td><td id="mv500"></td><td id="dev500"></td></tr><tr><td>医药ETF</td><td>5%</td><td>¥5,000</td><td id="mvMed"></td><td id="devMed"></td></tr><tr><td>半导体ETF</td><td>5%</td><td>¥5,000</td><td id="mvTech"></td><td id="devTech"></td></tr><tr><td>国债ETF</td><td>40%</td><td>¥40,000</td><td id="mvBond"></td><td id="devBond"></td></tr><tr style="font-weight:700;"><td colspan="3">合计</td><td id="mvTotal"></td><td id="devTotal"></td></tr></table></div></div>
 
-    <!-- 规则四：买入触发 -->
-    <div class="card"><div class="card-header">📈 买入触发检查</div><div class="card-body"><table><tr><th>ETF</th><th>PE分位</th><th>估值</th><th>周线趋势</th><th>趋势</th><th>双条件</th><th>建议</th></tr>
+    <!-- 规则四：买入触发检查（含观察） -->
+    <div class="card"><div class="card-header">📈 买入触发检查（含观察）</div><div class="card-body"><table><tr><th>ETF</th><th>PE分位</th><th>估值</th><th>周线趋势</th><th>趋势</th><th>双条件</th><th>建议</th></tr>
     <tr><td>沪深300</td><td id="peDisplay300"></td><td id="condPe300"></td><td><select id="trend300" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend300"></td><td id="both300"></td><td id="advice300"></td></tr>
     <tr><td>中证500</td><td id="peDisplay500"></td><td id="condPe500"></td><td><select id="trend500" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend500"></td><td id="both500"></td><td id="advice500"></td></tr>
     <tr><td>医药ETF</td><td id="peDisplayMed"></td><td id="condPeMed"></td><td><select id="trendMed" onchange="updateAll()"><option value="above" selected>站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrendMed"></td><td id="bothMed"></td><td id="adviceMed"></td></tr>
     <tr><td>半导体ETF</td><td id="peDisplayTech"></td><td id="condPeTech"></td><td><select id="trendTech" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2" selected>跌破2周</option></select></td><td id="condTrendTech"></td><td id="bothTech"></td><td id="adviceTech"></td></tr>
+    <tr class="observe-row"><td>👀创新药ETF</td><td id="peDisplayInn"></td><td id="condPeInn"></td><td id="trendDisplayInn">—</td><td id="condTrendInn"></td><td id="bothInn"></td><td id="adviceInn"></td></tr>
+    <tr class="observe-row"><td>👀中证1000ETF</td><td id="peDisplay1000"></td><td id="condPe1000"></td><td id="trendDisplay1000">—</td><td id="condTrend1000"></td><td id="both1000"></td><td id="advice1000"></td></tr>
     </table></div></div>
 
-    <!-- 规则五：持仓监控（动态回撤版） -->
+    <!-- 规则五：持仓监控（仅持仓品种） -->
     <div class="card">
         <div class="card-header">📊 持仓监控 & 分批建仓（半导体止损20%/25%）</div>
         <div class="card-body">
@@ -99,11 +104,14 @@
     // 工具函数
     function toggleCheck(cb,id){ document.getElementById(id).innerHTML=cb.checked?'<span class="tag tag-success">✓ 已完成</span>':'<span class="tag tag-info">待执行</span>'; }
 
-    // 实时行情（腾讯）
+    // 实时行情（腾讯）- 加入观察品种代码
     function fetchRealtimeQuotes(){
         const btn = document.querySelector('.refresh-btn');
         btn.disabled = true; btn.textContent = '⏳ 获取中...';
-        const codes = { price300:'sh510300', price500:'sh510500', priceMed:'sh512010', priceTech:'sh512480', priceBond:'sh511260' };
+        const codes = {
+            price300:'sh510300', price500:'sh510500', priceMed:'sh512010', priceTech:'sh512480', priceBond:'sh511260',
+            priceInn:'sz159992', price1000:'sh512100'   // 观察品种
+        };
         const promises = Object.entries(codes).map(([id, code]) => {
             return fetch(`https://qt.gtimg.cn/q=${code}`).then(r=>r.text()).then(txt=>{
                 const arr = txt.split('~'); return {id, price: arr.length>3 ? parseFloat(arr[3]) : null};
@@ -116,7 +124,7 @@
         }).catch(() => { alert('行情获取失败'); btn.textContent = '📡 刷新失败，重试'; btn.disabled = false; });
     }
 
-    // ========== 本地存储：分批数据 ==========
+    // ========== 本地存储（仅持仓品种） ==========
     const BATCH_STORAGE_KEY = 'fangyuan_batches_semi';
     function saveBatches(id, batches) {
         const all = JSON.parse(localStorage.getItem(BATCH_STORAGE_KEY) || '{}');
@@ -153,7 +161,8 @@
         }
     }
 
-    const ETF_IDS = ['300','500','Med','Tech','Bond'];
+    const ETF_IDS = ['300','500','Med','Tech','Bond'];   // 持仓品种
+    const OBS_IDS = ['Inn','1000'];                      // 观察品种
     const MAX_BATCHES = 3;
 
     function getBatchInputs(id) {
@@ -236,14 +245,21 @@
     }
 
     function updateAll() {
+        // 1. 更新持仓汇总
         const summary = {};
         ETF_IDS.forEach(id => { summary[id] = updateBatchSummary(id); });
 
+        // 2. 读取所有PE分位（持仓+观察）
         const pe300=parseFloat(document.getElementById('pe300').value)||0, pe500=parseFloat(document.getElementById('pe500').value)||0, peMed=parseFloat(document.getElementById('peMed').value)||0, peTech=parseFloat(document.getElementById('peTech').value)||0;
+        const peInn=parseFloat(document.getElementById('peInn').value)||0, pe1000=parseFloat(document.getElementById('pe1000').value)||0;
+
+        // 3. 趋势（持仓使用下拉框，观察使用data.js提供的值）
         const trend300=document.getElementById('trend300').value, trend500=document.getElementById('trend500').value, trendMed=document.getElementById('trendMed').value, trendTech=document.getElementById('trendTech').value;
+        const trendInn = document.getElementById('trendDisplayInn').textContent === '站上' ? 'above' : (document.getElementById('trendDisplayInn').textContent === '跌破1周' ? 'below1' : 'below2');
+        const trend1000 = document.getElementById('trendDisplay1000').textContent === '站上' ? 'above' : (document.getElementById('trendDisplay1000').textContent === '跌破1周' ? 'below1' : 'below2');
 
+        // 4. 价格（持仓从输入框读取）
         const p300=parseFloat(document.getElementById('price300').value)||0, p500=parseFloat(document.getElementById('price500').value)||0, pMed=parseFloat(document.getElementById('priceMed').value)||0, pTech=parseFloat(document.getElementById('priceTech').value)||0, pBond=parseFloat(document.getElementById('priceBond').value)||0;
-
         const s300=summary['300'].totalShares, s500=summary['500'].totalShares, sMed=summary['Med'].totalShares, sTech=summary['Tech'].totalShares, sBond=summary['Bond'].totalShares;
         const avg300=summary['300'].avgPrice, avg500=summary['500'].avgPrice, avgMed=summary['Med'].avgPrice, avgTech=summary['Tech'].avgPrice, avgBond=summary['Bond'].avgPrice;
 
@@ -288,19 +304,29 @@
         }
         updRow('300',mv300,pl300,dd300);updRow('500',mv500,pl500,dd500);updRow('Med',mvMed,plMed,ddMed);updRow('Tech',mvTech,plTech,ddTech);updRow('Bond',mvBond,plBond,ddBond);
 
-        function buyCheck(pf,pe,tr){
+        // 买入检查（持仓+观察）
+        function buyCheck(pf,pe,tr, isObserve=false){
             const peOk=pe<30,trOk=tr==='above';
             document.getElementById('peDisplay'+pf).textContent=pe.toFixed(1)+'%';
             document.getElementById('condPe'+pf).textContent=peOk?'✅':'❌';
-            document.getElementById('condTrend'+pf).textContent=trOk?'✅':'❌';
+            if (!isObserve) {
+                document.getElementById('condTrend'+pf).textContent=trOk?'✅':'❌';
+            } else {
+                document.getElementById('condTrend'+pf).textContent=trOk?'✅':'❌';
+            }
             const b=document.getElementById('both'+pf),a=document.getElementById('advice'+pf);
             if(peOk&&trOk){b.innerHTML='<span class="tag tag-success">✓ 满足</span>';a.textContent='可买入';a.style.color='#38a169';}
             else if(tr==='below2'){b.innerHTML='<span class="tag tag-danger">禁止</span>';a.textContent='趋势破位';a.style.color='#e53e3e';}
             else{b.innerHTML='<span class="tag tag-neutral">不满足</span>';a.textContent='观望';a.style.color='#4a5568';}
         }
-        buyCheck('300',pe300,trend300);buyCheck('500',pe500,trend500);buyCheck('Med',peMed,trendMed);buyCheck('Tech',peTech,trendTech);
+        buyCheck('300',pe300,trend300);
+        buyCheck('500',pe500,trend500);
+        buyCheck('Med',peMed,trendMed);
+        buyCheck('Tech',peTech,trendTech);
+        buyCheck('Inn',peInn,trendInn, true);
+        buyCheck('1000',pe1000,trend1000, true);
 
-        // 卖出信号：半导体使用20%/25%阈值
+        // 卖出信号（仅持仓）
         const alerts=[];
         function ckDD(n,v,rowId, threshold1=15, threshold2=20){
             const r=document.getElementById('row'+rowId);
@@ -311,9 +337,8 @@
         ckDD('沪深300',dd300,'300',15,20);
         ckDD('中证500',dd500,'500',15,20);
         ckDD('医药ETF',ddMed,'Med',15,20);
-        ckDD('半导体ETF',ddTech,'Tech',20,25);  // 半导体放宽
+        ckDD('半导体ETF',ddTech,'Tech',20,25);
         ckDD('国债ETF',ddBond,'Bond',15,20);
-
         if(pe300>=70)alerts.push({etf:'沪深300',msg:'PE分位≥70%，估值止盈'});
         if(pe500>=70)alerts.push({etf:'中证500',msg:'PE分位≥70%，估值止盈'});
         if(peMed>=70)alerts.push({etf:'医药ETF',msg:'PE分位≥70%，估值止盈'});
@@ -348,21 +373,34 @@
         else{alertPanel.style.display='none';badge.style.display='none';}
     }
 
+    // 应用自动数据（data.js）
     function applyAutoData(){
         if(typeof AUTO_DATA !== 'undefined'){
             if(AUTO_DATA.pe300) document.getElementById('pe300').value=AUTO_DATA.pe300;
             if(AUTO_DATA.pe500) document.getElementById('pe500').value=AUTO_DATA.pe500;
             if(AUTO_DATA.peMed) document.getElementById('peMed').value=AUTO_DATA.peMed;
             if(AUTO_DATA.peTech) document.getElementById('peTech').value=AUTO_DATA.peTech;
+            if(AUTO_DATA.peInn) document.getElementById('peInn').value=AUTO_DATA.peInn;
+            if(AUTO_DATA.pe1000) document.getElementById('pe1000').value=AUTO_DATA.pe1000;
             document.getElementById('histHigh300').textContent = AUTO_DATA.high300 || '—';
             document.getElementById('histHigh500').textContent = AUTO_DATA.high500 || '—';
             document.getElementById('histHighMed').textContent = AUTO_DATA.highMed || '—';
             document.getElementById('histHighTech').textContent = AUTO_DATA.highTech || '—';
             document.getElementById('histHighBond').textContent = AUTO_DATA.highBond || '—';
+            document.getElementById('histHighInn').textContent = AUTO_DATA.highInn || '—';
+            document.getElementById('histHigh1000').textContent = AUTO_DATA.high1000 || '—';
             if(AUTO_DATA.trend300) document.getElementById('trend300').value=AUTO_DATA.trend300;
             if(AUTO_DATA.trend500) document.getElementById('trend500').value=AUTO_DATA.trend500;
             if(AUTO_DATA.trendMed) document.getElementById('trendMed').value=AUTO_DATA.trendMed;
             if(AUTO_DATA.trendTech) document.getElementById('trendTech').value=AUTO_DATA.trendTech;
+            if(AUTO_DATA.trendInn) {
+                const trendText = AUTO_DATA.trendInn === 'above' ? '站上' : (AUTO_DATA.trendInn === 'below1' ? '跌破1周' : '跌破2周');
+                document.getElementById('trendDisplayInn').textContent = trendText;
+            }
+            if(AUTO_DATA.trend1000) {
+                const trendText = AUTO_DATA.trend1000 === 'above' ? '站上' : (AUTO_DATA.trend1000 === 'below1' ? '跌破1周' : '跌破2周');
+                document.getElementById('trendDisplay1000').textContent = trendText;
+            }
         }
     }
 
