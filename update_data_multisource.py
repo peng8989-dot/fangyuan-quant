@@ -38,6 +38,18 @@ ETF_CONFIG = {
         "name": "半导体ETF",
         "index_code": "H30184",        # 中证全指半导体指数
     },
+    "Inn": {
+    "symbol": "159992",
+    "name": "创新药ETF",
+    "index_code": "931152",        # 创新药产业指数
+    "pe_needed": True,
+    },
+    "1000": {
+    "symbol": "512100",
+    "name": "中证1000ETF",
+    "index_code": "000852",        # 中证1000指数
+    "pe_needed": True,
+    },
     "Bond": {
         "symbol": "511260",
         "name": "国债ETF",
