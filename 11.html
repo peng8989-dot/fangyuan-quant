@@ -105,13 +105,16 @@
     // 工具函数
     function toggleCheck(cb,id){ document.getElementById(id).innerHTML=cb.checked?'<span class="tag tag-success">✓ 已完成</span>':'<span class="tag tag-info">待执行</span>'; }
 
-    // ========== 实时行情（修复版） ==========
+    // ========== 实时行情（同时更新标的池与持仓） ==========
     async function fetchRealtimeQuotes(){
         const btn = document.querySelector('.refresh-btn');
         btn.disabled = true; btn.textContent = '⏳ 获取中...';
         const codes = {
+            // 标的池价格（只读显示）
             price300:'sh510300', price500:'sh510500', priceMed:'sh512010', priceTech:'sh512480', priceBond:'sh511260',
-            priceInn:'sz159992', price1000:'sh512100'
+            priceInn:'sz159992', price1000:'sh512100',
+            // 持仓现价（可编辑）
+            holdPrice300:'sh510300', holdPrice500:'sh510500', holdPriceMed:'sh512010', holdPriceTech:'sh512480', holdPriceBond:'sh511260'
         };
         let anySuccess = false;
         const tasks = Object.entries(codes).map(async ([id, code]) => {
@@ -130,9 +133,7 @@
                         }
                     }
                 }
-            } catch (e) {
-                // 单个失败静默处理
-            }
+            } catch (e) { /* 单个失败静默 */ }
         });
         await Promise.allSettled(tasks);
         if (!anySuccess) {
@@ -173,7 +174,7 @@
     function getPeak(id) { const peaks = loadPeaks(); return peaks[id] || 0; }
     function setPeak(id, value) { const peaks = loadPeaks(); peaks[id] = value; savePeaks(peaks); }
     function resetPeak(id) {
-        const priceEl = document.getElementById(`price${id}`);
+        const priceEl = document.getElementById(`holdPrice${id}`);
         if (priceEl) {
             const currentPrice = parseFloat(priceEl.value) || 0;
             if (currentPrice > 0) { setPeak(id, currentPrice); updateAll(); }
@@ -231,7 +232,7 @@
                 <td><button class="btn btn-primary" onclick="toggleBatchDetail('${id}')">📋 明细</button></td>
                 <td class="summary-cell" id="avgPrice_${id}">0.000</td>
                 <td class="summary-cell" id="totalShares_${id}">0</td>
-                <td><input type="number" id="price${id}" value="${id==='300'?'4.714':id==='500'?'5.800':id==='Med'?'0.384':id==='Tech'?'1.250':'102.30'}" step="0.001" oninput="updateAll()"></td>
+                <td><input type="number" id="holdPrice${id}" value="${id==='300'?'4.714':id==='500'?'5.800':id==='Med'?'0.384':id==='Tech'?'1.250':'102.30'}" step="0.001" oninput="updateAll()"></td>
                 <td class="peak-display">
                     <span id="peak_${id}">0.000</span>
                     <button class="btn btn-warning" style="margin-left:4px;font-size:0.7em;" onclick="resetPeak('${id}')">🔄</button>
@@ -277,8 +278,12 @@
         const trendInn = document.getElementById('trendDisplayInn').textContent === '站上' ? 'above' : (document.getElementById('trendDisplayInn').textContent === '跌破1周' ? 'below1' : 'below2');
         const trend1000 = document.getElementById('trendDisplay1000').textContent === '站上' ? 'above' : (document.getElementById('trendDisplay1000').textContent === '跌破1周' ? 'below1' : 'below2');
 
-        // 4. 价格（持仓从输入框读取，观察价格已通过行情刷新填入 readonly input）
-        const p300=parseFloat(document.getElementById('price300').value)||0, p500=parseFloat(document.getElementById('price500').value)||0, pMed=parseFloat(document.getElementById('priceMed').value)||0, pTech=parseFloat(document.getElementById('priceTech').value)||0, pBond=parseFloat(document.getElementById('priceBond').value)||0;
+        // 4. 价格（持仓现价从 holdPrice* 读取）
+        const p300=parseFloat(document.getElementById('holdPrice300')?.value)||0;
+        const p500=parseFloat(document.getElementById('holdPrice500')?.value)||0;
+        const pMed=parseFloat(document.getElementById('holdPriceMed')?.value)||0;
+        const pTech=parseFloat(document.getElementById('holdPriceTech')?.value)||0;
+        const pBond=parseFloat(document.getElementById('holdPriceBond')?.value)||0;
         const s300=summary['300'].totalShares, s500=summary['500'].totalShares, sMed=summary['Med'].totalShares, sTech=summary['Tech'].totalShares, sBond=summary['Bond'].totalShares;
         const avg300=summary['300'].avgPrice, avg500=summary['500'].avgPrice, avgMed=summary['Med'].avgPrice, avgTech=summary['Tech'].avgPrice, avgBond=summary['Bond'].avgPrice;
 
