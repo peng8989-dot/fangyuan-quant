@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>「方圆」量化投资系统 · 预估买入版</title>
+    <title>「方圆」量化投资系统 · 分批建仓预估</title>
     <style>
         :root { --bg: #f0f2f5; --primary: #1a365d; --text: #2d3748; --border: #e2e8f0; --danger: #e53e3e; --warning: #dd6b20; --success: #38a169; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); padding: 16px; color: var(--text); }
-        .container { max-width: 1300px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
         .header { background: linear-gradient(135deg, #1a365d, #2c5282); color: #fff; padding: 22px 28px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .header h1 { font-size: 1.6em; }
         .stat-box { background: rgba(255,255,255,0.13); padding: 12px 18px; border-radius: 6px; text-align: center; min-width: 80px; }
         .stat-val { font-size: 1.4em; font-weight: 700; }
-        .stat-label { font-size: 0.7em; opacity: 0.8; }
         .alert-stat { background: rgba(229,62,62,0.35); border: 2px solid rgba(255,255,255,0.6); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{ box-shadow:0 0 8px rgba(255,80,80,0.3); } 50%{ box-shadow:0 0 24px rgba(255,60,60,0.8); } }
         .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
-        .card-header { padding: 14px 20px; background: #fafbfc; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+        .card-header { padding: 14px 20px; background: #fafbfc; font-weight: 700; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; }
         .card-body { padding: 16px 20px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 1000px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; min-width: 900px; }
         th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #edf2f7; }
         th { background: #f7fafc; font-weight: 700; color: #1a365d; font-size: 0.8em; }
         .tag { padding: 3px 10px; border-radius: 12px; font-size: 0.75em; font-weight: 600; display: inline-block; }
@@ -28,28 +27,24 @@
         .btn { padding: 6px 12px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; font-size: 0.8em; }
         .btn-primary { background: #3182ce; color: #fff; }
         .btn-warning { background: #dd6b20; color: #fff; }
-        .btn-danger { background: #e53e3e; color: #fff; }
         .refresh-btn { background: #38a169; color: #fff; padding: 10px 24px; font-size: 0.9em; }
         .alert-panel { border: 3px solid #e53e3e; background: #fff5f5; padding: 16px 20px; border-radius: 10px; animation: alertBlink 0.8s infinite; }
         @keyframes alertBlink { 50% { border-color: #ff2020; } }
         .blink-row-danger { animation: rowBlink 0.8s infinite; } .blink-row-critical { animation: rowBlinkCritical 0.45s infinite; }
         @keyframes rowBlink { 65% { background: #fed7d7; } } @keyframes rowBlinkCritical { 65% { background: #fbb6b6; } }
-        .batch-row { background: #f9fafb; }
-        .batch-row input { width: 85px; }
-        .summary-cell { font-weight: 700; }
-        .peak-display { font-weight: 700; color: #2c5282; }
         .observe-row { background: #fefce8; }
         .readonly-price { background: #f7fafc; border: 1px solid #e2e8f0; font-weight: 600; }
-        .estimate-box { background: #ebf8ff; border-radius: 6px; padding: 6px 10px; font-size: 0.85em; text-align: left; line-height: 1.8; }
-        .estimate-box strong { color: #2c5282; }
-        .est-price { color: #e53e3e; font-weight: 700; }
-        .est-shares { color: #38a169; font-weight: 700; }
+        .est-tag { display: inline-block; color: #dd6b20; font-size: 0.78em; font-weight: 600; background: #fffaf0; padding: 3px 8px; border-radius: 4px; border: 1px dashed #dd6b20; white-space: nowrap; margin-left: 4px; }
+        .batch-row { background: #f9fafb; }
+        .batch-row input { width: 90px; }
+        .batch-row .batch-label { font-weight: 700; margin-right: 4px; }
     </style>
+    <script src="data.js"></script>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div><h1>📐 「方圆」量化投资系统</h1><div style="font-size:0.85em;opacity:0.85;">预估买入 · 分批建仓</div></div>
+        <div><h1>📐 「方圆」量化投资系统</h1><div style="font-size:0.85em;opacity:0.85;">分批建仓预估 · 5持仓 + 观察</div></div>
         <div class="header-stats" style="display:flex; gap:14px;">
             <div class="stat-box"><div class="stat-val" id="totalAssets">¥100,000</div><div class="stat-label">总资产</div></div>
             <div class="stat-box"><div class="stat-val" id="stockRatio">60.0%</div><div class="stat-label">股票仓位</div></div>
@@ -63,71 +58,54 @@
         <button class="btn refresh-btn" onclick="fetchRealtimeQuotes()">📡 一键刷新行情</button>
     </div>
 
+    <!-- 规则一 -->
     <div class="card"><div class="card-header">📋 资金与仓位规则</div><div class="card-body"><table><tr><th>规则</th><th>内容</th><th>状态</th></tr><tr><td>资金性质</td><td>3年闲钱，无杠杆</td><td><span class="tag tag-success">✓</span></td></tr><tr><td>股债基准</td><td>股票60% 债券40%</td><td id="stockBondStatus"></td></tr><tr><td>再平衡触发</td><td>股票≥70%或≤50%</td><td id="rebalanceStatus"></td></tr><tr><td>单只上限</td><td>≤总资产10%</td><td id="singleLimitStatus"></td></tr></table></div></div>
 
-    <!-- 标的池 -->
-    <div class="card">
-        <div class="card-header">📦 标的池（估值回撤对比）</div>
-        <div class="card-body">
-            <table>
-                <thead><tr><th>层级</th><th>ETF</th><th>代码</th><th>PE分位</th><th>近5年最高</th><th>现价</th><th>估值回撤</th><th>规模</th><th>费率</th></tr></thead>
-                <tbody>
-                    <tr><td>核心</td><td>沪深300</td><td>510300</td><td><input type="number" id="pe300" value="45" step="0.1" oninput="updateAll()">%</td><td id="histHigh300">—</td><td><input type="number" id="price300" class="readonly-price" value="4.714" step="0.001" readonly></td><td id="ddHist300">—</td><td>~1800亿</td><td>0.15%</td></tr>
-                    <tr><td>核心</td><td>中证500</td><td>510500</td><td><input type="number" id="pe500" value="36" step="0.1" oninput="updateAll()">%</td><td id="histHigh500">—</td><td><input type="number" id="price500" class="readonly-price" value="5.800" step="0.001" readonly></td><td id="ddHist500">—</td><td>~700亿</td><td>0.15%</td></tr>
-                    <tr><td>卫星</td><td>医药ETF</td><td>512010</td><td><input type="number" id="peMed" value="28.5" step="0.1" oninput="updateAll()">%</td><td id="histHighMed">—</td><td><input type="number" id="priceMed" class="readonly-price" value="0.384" step="0.001" readonly></td><td id="ddHistMed">—</td><td>~45亿</td><td>0.35%</td></tr>
-                    <tr><td>卫星</td><td>半导体ETF</td><td>512480</td><td><input type="number" id="peTech" value="60" step="0.1" oninput="updateAll()">%</td><td id="histHighTech">—</td><td><input type="number" id="priceTech" class="readonly-price" value="1.250" step="0.001" readonly></td><td id="ddHistTech">—</td><td>~200亿</td><td>0.50%</td></tr>
-                    <tr><td>债券</td><td>国债ETF</td><td>511260</td><td>—</td><td id="histHighBond">—</td><td><input type="number" id="priceBond" class="readonly-price" value="102.30" step="0.001" readonly></td><td id="ddHistBond">—</td><td>~55亿</td><td>0.15%</td></tr>
-                </tbody>
-                <tbody id="observePoolBody"></tbody>
-            </table>
-            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
-                <input type="text" id="newObsCode" placeholder="ETF代码 (如588170)" style="width:150px;">
-                <button class="btn btn-primary" onclick="addObserved()">➕ 添加观察</button>
-                <span style="font-size:0.8em; color:#718096;">名称自动识别，PE/最高价可手动修改</span>
-            </div>
-        </div>
-    </div>
+    <!-- 规则二：标的池 -->
+    <div class="card"><div class="card-header">📦 标的池（估值回撤对比）</div><div class="card-body"><table><tr><th>层级</th><th>ETF</th><th>代码</th><th>PE分位</th><th>近5年最高</th><th>现价</th><th>估值回撤</th><th>规模</th><th>费率</th></tr>
+    <tr><td>核心</td><td>沪深300</td><td>510300</td><td><input type="number" id="pe300" value="45" step="0.1" oninput="updateAll()">%</td><td id="histHigh300">—</td><td><input type="number" id="price300" class="readonly-price" value="4.714" step="0.001" readonly></td><td id="ddHist300">—</td><td>~1800亿</td><td>0.15%</td></tr>
+    <tr><td>核心</td><td>中证500</td><td>510500</td><td><input type="number" id="pe500" value="36" step="0.1" oninput="updateAll()">%</td><td id="histHigh500">—</td><td><input type="number" id="price500" class="readonly-price" value="5.800" step="0.001" readonly></td><td id="ddHist500">—</td><td>~700亿</td><td>0.15%</td></tr>
+    <tr><td>卫星</td><td>医药ETF</td><td>512010</td><td><input type="number" id="peMed" value="28.5" step="0.1" oninput="updateAll()">%</td><td id="histHighMed">—</td><td><input type="number" id="priceMed" class="readonly-price" value="0.384" step="0.001" readonly></td><td id="ddHistMed">—</td><td>~45亿</td><td>0.35%</td></tr>
+    <tr><td>卫星</td><td>半导体ETF</td><td>512480</td><td><input type="number" id="peTech" value="60" step="0.1" oninput="updateAll()">%</td><td id="histHighTech">—</td><td><input type="number" id="priceTech" class="readonly-price" value="1.250" step="0.001" readonly></td><td id="ddHistTech">—</td><td>~200亿</td><td>0.50%</td></tr>
+    <tr><td>债券</td><td>国债ETF</td><td>511260</td><td>—</td><td id="histHighBond">—</td><td><input type="number" id="priceBond" class="readonly-price" value="102.30" step="0.001" readonly></td><td id="ddHistBond">—</td><td>~55亿</td><td>0.15%</td></tr>
+    </table></div></div>
 
-    <!-- 资金分配 -->
-    <div class="card"><div class="card-header">💰 资金分配（观察品种不参与）</div><div class="card-body"><table><tr><th>ETF</th><th>比例</th><th>分配额</th><th>当前市值</th><th>偏差</th></tr><tr><td>沪深300</td><td>25%</td><td>¥25,000</td><td id="mv300"></td><td id="dev300"></td></tr><tr><td>中证500</td><td>25%</td><td>¥25,000</td><td id="mv500"></td><td id="dev500"></td></tr><tr><td>医药ETF</td><td>5%</td><td>¥5,000</td><td id="mvMed"></td><td id="devMed"></td></tr><tr><td>半导体ETF</td><td>5%</td><td>¥5,000</td><td id="mvTech"></td><td id="devTech"></td></tr><tr><td>国债ETF</td><td>40%</td><td>¥40,000</td><td id="mvBond"></td><td id="devBond"></td></tr><tr style="font-weight:700;"><td colspan="3">合计</td><td id="mvTotal"></td><td id="devTotal"></td></tr></table></div></div>
+    <!-- 规则三 -->
+    <div class="card"><div class="card-header">💰 资金分配（观察品种不参与）</div><div class="card-body"><table><tr><th>ETF</th><th>比例</th><th>分配额</th><th>单批金额</th><th>当前市值</th><th>偏差</th></tr><tr><td>沪深300</td><td>25%</td><td>¥25,000</td><td>¥8,333</td><td id="mv300"></td><td id="dev300"></td></tr><tr><td>中证500</td><td>25%</td><td>¥25,000</td><td>¥8,333</td><td id="mv500"></td><td id="dev500"></td></tr><tr><td>医药ETF</td><td>5%</td><td>¥5,000</td><td>¥1,667</td><td id="mvMed"></td><td id="devMed"></td></tr><tr><td>半导体ETF</td><td>5%</td><td>¥5,000</td><td>¥1,667</td><td id="mvTech"></td><td id="devTech"></td></tr><tr><td>国债ETF</td><td>40%</td><td>¥40,000</td><td>—</td><td id="mvBond"></td><td id="devBond"></td></tr><tr style="font-weight:700;"><td colspan="4">合计</td><td id="mvTotal"></td><td id="devTotal"></td></tr></table></div></div>
 
-    <!-- 买入触发检查 -->
-    <div class="card">
-        <div class="card-header">📈 买入触发检查（含观察）</div>
-        <div class="card-body">
-            <table>
-                <thead><tr><th>ETF</th><th>PE分位</th><th>估值</th><th>周线趋势</th><th>趋势</th><th>双条件</th><th>建议</th></tr></thead>
-                <tbody>
-                    <tr><td>沪深300</td><td id="peDisplay300"></td><td id="condPe300"></td><td><select id="trend300" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend300"></td><td id="both300"></td><td id="advice300"></td></tr>
-                    <tr><td>中证500</td><td id="peDisplay500"></td><td id="condPe500"></td><td><select id="trend500" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend500"></td><td id="both500"></td><td id="advice500"></td></tr>
-                    <tr><td>医药ETF</td><td id="peDisplayMed"></td><td id="condPeMed"></td><td><select id="trendMed" onchange="updateAll()"><option value="above" selected>站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrendMed"></td><td id="bothMed"></td><td id="adviceMed"></td></tr>
-                    <tr><td>半导体ETF</td><td id="peDisplayTech"></td><td id="condPeTech"></td><td><select id="trendTech" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2" selected>跌破2周</option></select></td><td id="condTrendTech"></td><td id="bothTech"></td><td id="adviceTech"></td></tr>
-                </tbody>
-                <tbody id="observeCheckBody"></tbody>
-            </table>
-        </div>
-    </div>
+    <!-- 规则四 -->
+    <div class="card"><div class="card-header">📈 买入触发检查（含观察）</div><div class="card-body"><table><tr><th>ETF</th><th>PE分位</th><th>估值</th><th>周线趋势</th><th>趋势</th><th>双条件</th><th>建议</th></tr>
+    <tr><td>沪深300</td><td id="peDisplay300"></td><td id="condPe300"></td><td><select id="trend300" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend300"></td><td id="both300"></td><td id="advice300"></td></tr>
+    <tr><td>中证500</td><td id="peDisplay500"></td><td id="condPe500"></td><td><select id="trend500" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrend500"></td><td id="both500"></td><td id="advice500"></td></tr>
+    <tr><td>医药ETF</td><td id="peDisplayMed"></td><td id="condPeMed"></td><td><select id="trendMed" onchange="updateAll()"><option value="above" selected>站上</option><option value="below1">跌破1周</option><option value="below2">跌破2周</option></select></td><td id="condTrendMed"></td><td id="bothMed"></td><td id="adviceMed"></td></tr>
+    <tr><td>半导体ETF</td><td id="peDisplayTech"></td><td id="condPeTech"></td><td><select id="trendTech" onchange="updateAll()"><option value="above">站上</option><option value="below1">跌破1周</option><option value="below2" selected>跌破2周</option></select></td><td id="condTrendTech"></td><td id="bothTech"></td><td id="adviceTech"></td></tr>
+    </table></div></div>
 
-    <!-- 持仓监控（含预估买入） -->
+    <!-- 规则五：持仓监控 & 分批建仓（含预估） -->
     <div class="card">
-        <div class="card-header">📊 持仓监控 & 分批建仓（含预估买入价格与份额）</div>
+        <div class="card-header">📊 持仓监控 & 分批建仓（含预估可买价格/份额）</div>
         <div class="card-body">
             <table id="holdingsTable">
                 <thead><tr><th>ETF</th><th>分批明细</th><th>均价</th><th>总份额</th><th>现价</th><th>持仓最高</th><th>市值</th><th>盈亏</th><th>回撤</th><th>信号</th></tr></thead>
                 <tbody id="holdingsBody"></tbody>
             </table>
+            <div style="margin-top:10px;font-size:0.78em;color:#718096;">
+                💡 预估基于第一批建仓价：第二批 = 第一批 × 0.95，第三批 = 第一批 × 0.90；单批金额 = 该ETF计划总额 ÷ 3
+            </div>
         </div>
     </div>
 
     <div class="alert-panel" id="alertPanel" style="display:none;"><div class="alert-panel-title">🚨 卖出信号警报</div><div id="alertItems"></div></div>
+
     <div class="card"><div class="card-header">✅ 月度检视</div><div class="card-body"><table><tr><th>#</th><th>项目</th><th>状态</th><th>完成</th></tr><tr><td>1</td><td>更新市值</td><td id="chk1"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk1')"></td></tr><tr><td>2</td><td>股债比例</td><td id="chk2"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk2')"></td></tr><tr><td>3</td><td>回撤检查</td><td id="chk3"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk3')"></td></tr><tr><td>4</td><td>PE止盈</td><td id="chk4"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk4')"></td></tr><tr><td>5</td><td>趋势检查</td><td id="chk5"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk5')"></td></tr><tr><td>6</td><td>ETF资质</td><td id="chk6"><span class="tag tag-info">待执行</span></td><td><input type="checkbox" onchange="toggleCheck(this,'chk6')"></td></tr></table></div></div>
 </div>
 
 <script>
+    // 工具函数
     function toggleCheck(cb,id){ document.getElementById(id).innerHTML=cb.checked?'<span class="tag tag-success">✓ 已完成</span>':'<span class="tag tag-info">待执行</span>'; }
 
-    // ========== 资金分配计划（用于预估） ==========
-    const PLAN_AMOUNT = { '300': 25000, '500': 25000, 'Med': 5000, 'Tech': 5000, 'Bond': 40000 };
+    // 各 ETF 计划总额（用于单批金额计算）
+    const ALLOCATION = { '300': 25000, '500': 25000, 'Med': 5000, 'Tech': 5000, 'Bond': 40000 };
 
     // ========== 实时行情 ==========
     async function fetchRealtimeQuotes(){
@@ -137,6 +115,7 @@
             price300:'sh510300', price500:'sh510500', priceMed:'sh512010', priceTech:'sh512480', priceBond:'sh511260',
             holdPrice300:'sh510300', holdPrice500:'sh510500', holdPriceMed:'sh512010', holdPriceTech:'sh512480', holdPriceBond:'sh511260'
         };
+        let anySuccess = false;
         const tasks = Object.entries(codes).map(async ([id, code]) => {
             try {
                 const resp = await fetch(`https://qt.gtimg.cn/q=${code}`);
@@ -147,39 +126,20 @@
                     const price = parseFloat(arr[3]);
                     if (!isNaN(price)) {
                         const el = document.getElementById(id);
-                        if (el) el.value = price.toFixed(3);
+                        if (el) { el.value = price.toFixed(3); anySuccess = true; }
                     }
                 }
             } catch (e) {}
         });
         await Promise.allSettled(tasks);
-
-        // 观察品种价格
-        const obsList = getObservedList();
-        const obsTasks = obsList.map(async item => {
-            const mkt = item.code.startsWith('159') || item.code.startsWith('16') ? 'sz' : 'sh';
-            try {
-                const resp = await fetch(`https://qt.gtimg.cn/q=${mkt}${item.code}`);
-                const txt = await resp.text();
-                const arr = txt.split('~');
-                if (arr.length > 3) {
-                    const price = parseFloat(arr[3]);
-                    if (!isNaN(price)) {
-                        const el = document.getElementById(`price_obs_${item.id}`);
-                        if (el) el.value = price.toFixed(3);
-                    }
-                }
-            } catch(e) {}
-        });
-        await Promise.allSettled(obsTasks);
-
+        if (!anySuccess) alert('行情获取失败，请稍后重试。');
         updateAll();
         btn.textContent = '📡 一键刷新行情';
         btn.disabled = false;
     }
 
-    // ========== 本地存储 ==========
-    const BATCH_STORAGE_KEY = 'fangyuan_batches_semi';
+    // ========== 本地存储：分批数据 ==========
+    const BATCH_STORAGE_KEY = 'fangyuan_batches_v2';
     function saveBatches(id, batches) {
         const all = JSON.parse(localStorage.getItem(BATCH_STORAGE_KEY) || '{}');
         all[id] = batches;
@@ -198,7 +158,8 @@
         }
     }
 
-    const PEAK_STORAGE_KEY = 'fangyuan_peaks_semi';
+    // ========== 本地存储：持仓最高价 ==========
+    const PEAK_STORAGE_KEY = 'fangyuan_peaks_v2';
     function loadPeaks() { return JSON.parse(localStorage.getItem(PEAK_STORAGE_KEY) || '{}'); }
     function savePeaks(peaks) { localStorage.setItem(PEAK_STORAGE_KEY, JSON.stringify(peaks)); }
     function getPeak(id) { return (loadPeaks())[id] || 0; }
@@ -208,104 +169,6 @@
         if (priceEl) { const p = parseFloat(priceEl.value)||0; if(p>0) { setPeak(id, p); updateAll(); } }
     }
 
-    // ========== 动态观察列表 ==========
-    const STORAGE_OBS = 'fangyuan_observed';
-    function getObservedList() {
-        let list = localStorage.getItem(STORAGE_OBS);
-        if (list) return JSON.parse(list);
-        const def = [
-            { id: 'Inn', code: '159992', name: '创新药ETF', pe: 40, high: 1.35, trend: 'above' },
-            { id: '1000', code: '512100', name: '中证1000ETF', pe: 50, high: 2.95, trend: 'above' }
-        ];
-        localStorage.setItem(STORAGE_OBS, JSON.stringify(def));
-        return def;
-    }
-    function saveObservedList(list) { localStorage.setItem(STORAGE_OBS, JSON.stringify(list)); }
-
-    function renderObserved() {
-        const list = getObservedList();
-        const poolBody = document.getElementById('observePoolBody');
-        const checkBody = document.getElementById('observeCheckBody');
-        if (!poolBody || !checkBody) return;
-        let poolHtml = '', checkHtml = '';
-        list.forEach(item => {
-            const id = item.id;
-            poolHtml += `
-            <tr class="observe-row">
-                <td>👀观察</td><td>${item.name}</td><td>${item.code}</td>
-                <td><input type="number" id="pe_obs_${id}" value="${item.pe}" step="0.1" onchange="updateObservedItem('${id}','pe',this.value)">%</td>
-                <td><input type="number" id="high_obs_${id}" value="${item.high}" step="0.001" onchange="updateObservedItem('${id}','high',this.value)"></td>
-                <td><input type="number" id="price_obs_${id}" class="readonly-price" value="0.000" step="0.001" readonly></td>
-                <td id="ddHist_obs_${id}">—</td><td>-</td><td>-</td>
-                <td><button class="btn btn-danger" onclick="removeObserved('${id}')">🗑️</button></td>
-            </tr>`;
-            checkHtml += `
-            <tr class="observe-row">
-                <td>👀${item.name}</td>
-                <td id="peDisplay_obs_${id}">${item.pe}%</td>
-                <td id="condPe_obs_${id}"></td>
-                <td><select id="trend_obs_${id}" onchange="updateObservedItem('${id}','trend',this.value)">
-                    <option value="above" ${item.trend==='above'?'selected':''}>站上</option>
-                    <option value="below1" ${item.trend==='below1'?'selected':''}>跌破1周</option>
-                    <option value="below2" ${item.trend==='below2'?'selected':''}>跌破2周</option>
-                </select></td>
-                <td id="condTrend_obs_${id}"></td>
-                <td id="both_obs_${id}"></td>
-                <td id="advice_obs_${id}"></td>
-            </tr>`;
-        });
-        poolBody.innerHTML = poolHtml;
-        checkBody.innerHTML = checkHtml;
-    }
-
-    function updateObservedItem(id, field, value) {
-        const list = getObservedList();
-        const item = list.find(i => i.id === id);
-        if (!item) return;
-        if (field === 'pe') item.pe = parseFloat(value) || 50;
-        else if (field === 'high') item.high = parseFloat(value) || 0;
-        else if (field === 'trend') item.trend = value;
-        saveObservedList(list);
-        updateAll();
-    }
-
-    async function addObserved() {
-        const codeInput = document.getElementById('newObsCode');
-        const code = codeInput.value.trim();
-        if (!code) return alert('请输入ETF代码');
-        const list = getObservedList();
-        if (list.some(i => i.code === code)) return alert('该ETF已在观察列表中');
-        let name = code, price = 0;
-        try {
-            const mkt = code.startsWith('159') || code.startsWith('16') ? 'sz' : 'sh';
-            const resp = await fetch(`https://qt.gtimg.cn/q=${mkt}${code}`);
-            const txt = await resp.text();
-            const parts = txt.split('~');
-            if (parts.length > 1) name = parts[1] || code;
-            if (parts.length > 3) price = parseFloat(parts[3]) || 0;
-        } catch (e) {}
-        const newItem = { id: 'obs_' + Date.now(), code, name, pe: 50, high: 0, trend: 'above' };
-        list.push(newItem);
-        saveObservedList(list);
-        renderObserved();
-        if (price > 0) {
-            const priceEl = document.getElementById(`price_obs_${newItem.id}`);
-            if (priceEl) priceEl.value = price.toFixed(3);
-        }
-        codeInput.value = '';
-        updateAll();
-    }
-
-    function removeObserved(id) {
-        if (!confirm('确定删除该观察品种吗？')) return;
-        let list = getObservedList();
-        list = list.filter(i => i.id !== id);
-        saveObservedList(list);
-        renderObserved();
-        updateAll();
-    }
-
-    // ========== 持仓表格 ==========
     const ETF_IDS = ['300','500','Med','Tech','Bond'];
     const MAX_BATCHES = 3;
 
@@ -335,42 +198,55 @@
         return { totalShares, avgPrice };
     }
 
+    // ========== 预估可买入价格与份额 ==========
+    function updateBatchEstimates(id) {
+        const batches = getBatchInputs(id); // 仅已填写的
+        const basePrice = parseFloat(document.getElementById(`batch1_price_${id}`)?.value) || 0;
+        const perBatchAmount = ALLOCATION[id] / 3;
+
+        // 判断每个批次是否已填写实际数据
+        const isFilled = [false, false, false];
+        for (let i = 0; i < 3; i++) {
+            const p = parseFloat(document.getElementById(`batch${i+1}_price_${id}`)?.value) || 0;
+            const s = parseInt(document.getElementById(`batch${i+1}_shares_${id}`)?.value) || 0;
+            if (p > 0 && s > 0) isFilled[i] = true;
+        }
+
+        // 更新预估标签：第二批 & 第三批
+        for (let i = 1; i < 3; i++) { // i=1 → 第二批, i=2 → 第三批
+            const estEl = document.getElementById(`est_${i+1}_${id}`);
+            if (!estEl) continue;
+
+            // 已填写则隐藏预估
+            if (isFilled[i] || basePrice <= 0) {
+                estEl.textContent = '';
+                continue;
+            }
+
+            const triggerPrice = basePrice * (1 - i * 0.05); // 第二批 -5%，第三批 -10%
+            const estShares = Math.floor(perBatchAmount / triggerPrice / 100) * 100;
+            const estAmount = (estShares * triggerPrice).toFixed(0);
+            estEl.textContent = `📌 预估: ${triggerPrice.toFixed(3)} 元 × ${estShares} 份 (≈¥${estAmount})`;
+        }
+
+        // 第一批预估：如果尚未填写份额，给出参考（基于现价）
+        const est1El = document.getElementById(`est_1_${id}`);
+        if (est1El) {
+            if (isFilled[0]) {
+                est1El.textContent = '';
+            } else if (basePrice > 0) {
+                const estShares = Math.floor(perBatchAmount / basePrice / 100) * 100;
+                est1El.textContent = `📌 参考: ${estShares} 份 (≈¥${(estShares * basePrice).toFixed(0)})`;
+            } else {
+                est1El.textContent = '';
+            }
+        }
+    }
+
     function toggleBatchDetail(id) {
         const row = document.getElementById(`batch_detail_${id}`);
         row.style.display = (row.style.display === 'none' || row.style.display === '') ? 'table-row' : 'none';
-    }
-
-    // 计算并更新预估买入信息
-    function updateEstimate(id) {
-        const estBox = document.getElementById(`estimate_${id}`);
-        if (!estBox) return;
-        const planAmount = PLAN_AMOUNT[id] || 0;
-        const perBatch = planAmount / 3;
-
-        // 基准价格：优先用持仓现价，如果没有则用标的池现价
-        let basePrice = parseFloat(document.getElementById(`holdPrice${id}`)?.value) || 0;
-        if (basePrice <= 0) basePrice = parseFloat(document.getElementById(`price${id}`)?.value) || 0;
-
-        // 如果已经持仓，用实际均价作为基准
-        const batches = getBatchInputs(id);
-        if (batches.length > 0) {
-            const { avgPrice } = calcSummary(batches);
-            if (avgPrice > 0) basePrice = avgPrice;
-        }
-
-        if (basePrice <= 0) {
-            estBox.innerHTML = '<span style="color:#718096;">等待价格数据...</span>';
-            return;
-        }
-
-        // 批次1: 基准价；批次2: 基准价×0.95；批次3: 基准价×0.90
-        const prices = [basePrice, basePrice * 0.95, basePrice * 0.90];
-        let html = '';
-        prices.forEach((p, i) => {
-            const shares = Math.floor(perBatch / p / 100) * 100;
-            html += `批次${i+1}: 预估买价 <span class="est-price">${p.toFixed(3)}</span>，可买 <span class="est-shares">${shares}份</span>（金额¥${perBatch.toFixed(0)}）<br>`;
-        });
-        estBox.innerHTML = html;
+        if (row.style.display === 'table-row') updateBatchEstimates(id);
     }
 
     function buildHoldingsTable() {
@@ -393,19 +269,16 @@
             </tr>
             <tr id="batch_detail_${id}" class="batch-row" style="display:none;">
                 <td colspan="10">
-                    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; padding:8px;">
-                        <div style="flex:1; min-width:400px;">
-                            <strong>分批建仓输入：</strong><br>
-                            ${[1,2,3].map(i => `
-                                <div style="margin-top:4px;">
-                                    批次${i} 价格 <input type="number" id="batch${i}_price_${id}" placeholder="0.000" step="0.001" oninput="updateAll()">
-                                    份额 <input type="number" id="batch${i}_shares_${id}" placeholder="0" step="1" style="width:80px;" oninput="updateAll()">
-                                </div>
-                            `).join('')}
-                        </div>
-                        <div style="flex:1; min-width:300px;">
-                            <div class="estimate-box" id="estimate_${id}">计算中...</div>
-                        </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:10px 8px;">
+                        <strong>分批建仓：</strong>
+                        ${[1,2,3].map(i => `
+                            <span style="display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+                                <span class="batch-label">批次${i}</span>
+                                价 <input type="number" id="batch${i}_price_${id}" placeholder="0.000" step="0.001" oninput="updateAll()">
+                                量 <input type="number" id="batch${i}_shares_${id}" placeholder="0" step="1" style="width:80px;" oninput="updateAll()">
+                                <span id="est_${i}_${id}" class="est-tag"></span>
+                            </span>
+                        `).join('')}
                     </div>
                 </td>
             </tr>`;
@@ -420,10 +293,12 @@
         return peak;
     }
 
-    // ========== 主计算 ==========
     function updateAll() {
         const summary = {};
-        ETF_IDS.forEach(id => { summary[id] = updateBatchSummary(id); });
+        ETF_IDS.forEach(id => {
+            summary[id] = updateBatchSummary(id);
+            updateBatchEstimates(id);   // 更新预估
+        });
 
         const pe300=parseFloat(document.getElementById('pe300').value)||0, pe500=parseFloat(document.getElementById('pe500').value)||0, peMed=parseFloat(document.getElementById('peMed').value)||0, peTech=parseFloat(document.getElementById('peTech').value)||0;
         const trend300=document.getElementById('trend300').value, trend500=document.getElementById('trend500').value, trendMed=document.getElementById('trendMed').value, trendTech=document.getElementById('trendTech').value;
@@ -433,25 +308,17 @@
         const avg300=summary['300'].avgPrice, avg500=summary['500'].avgPrice, avgMed=summary['Med'].avgPrice, avgTech=summary['Tech'].avgPrice, avgBond=summary['Bond'].avgPrice;
 
         const peak300 = updatePeakIfNeeded('300', p300), peak500 = updatePeakIfNeeded('500', p500), peakMed = updatePeakIfNeeded('Med', pMed), peakTech = updatePeakIfNeeded('Tech', pTech), peakBond = updatePeakIfNeeded('Bond', pBond);
-        document.getElementById('peak_300').textContent = peak300.toFixed(3);
-        document.getElementById('peak_500').textContent = peak500.toFixed(3);
-        document.getElementById('peak_Med').textContent = peakMed.toFixed(3);
-        document.getElementById('peak_Tech').textContent = peakTech.toFixed(3);
-        document.getElementById('peak_Bond').textContent = peakBond.toFixed(3);
+        document.getElementById('peak_300').textContent = peak300.toFixed(3); document.getElementById('peak_500').textContent = peak500.toFixed(3); document.getElementById('peak_Med').textContent = peakMed.toFixed(3); document.getElementById('peak_Tech').textContent = peakTech.toFixed(3); document.getElementById('peak_Bond').textContent = peakBond.toFixed(3);
 
         const mv300=s300*p300, mv500=s500*p500, mvMed=sMed*pMed, mvTech=sTech*pTech, mvBond=sBond*pBond;
         const totalStock=mv300+mv500+mvMed+mvTech, totalAssets=totalStock+mvBond;
         const stockRatio=totalAssets?totalStock/totalAssets*100:0, bondRatio=totalAssets?mvBond/totalAssets*100:0;
 
         document.getElementById('totalAssets').textContent='¥'+totalAssets.toLocaleString('zh-CN',{maximumFractionDigits:0});
-        document.getElementById('stockRatio').textContent=stockRatio.toFixed(1)+'%';
-        document.getElementById('bondRatio').textContent=bondRatio.toFixed(1)+'%';
-        document.getElementById('mv300').textContent='¥'+mv300.toLocaleString();
-        document.getElementById('mv500').textContent='¥'+mv500.toLocaleString();
-        document.getElementById('mvMed').textContent='¥'+mvMed.toLocaleString();
-        document.getElementById('mvTech').textContent='¥'+mvTech.toLocaleString();
-        document.getElementById('mvBond').textContent='¥'+mvBond.toLocaleString();
-        document.getElementById('mvTotal').textContent='¥'+totalAssets.toLocaleString();
+        document.getElementById('stockRatio').textContent=stockRatio.toFixed(1)+'%'; document.getElementById('bondRatio').textContent=bondRatio.toFixed(1)+'%';
+        document.getElementById('mv300').textContent='¥'+mv300.toLocaleString(); document.getElementById('mv500').textContent='¥'+mv500.toLocaleString();
+        document.getElementById('mvMed').textContent='¥'+mvMed.toLocaleString(); document.getElementById('mvTech').textContent='¥'+mvTech.toLocaleString();
+        document.getElementById('mvBond').textContent='¥'+mvBond.toLocaleString(); document.getElementById('mvTotal').textContent='¥'+totalAssets.toLocaleString();
 
         const alloc=[25000,25000,5000,5000,40000], mvs=[mv300,mv500,mvMed,mvTech,mvBond];
         ['dev300','dev500','devMed','devTech','devBond'].forEach((id,i)=>document.getElementById(id).textContent=(alloc[i]?((mvs[i]-alloc[i])/alloc[i]*100):0).toFixed(1)+'%');
@@ -470,37 +337,31 @@
         }
         updRow('300',mv300,pl300,dd300);updRow('500',mv500,pl500,dd500);updRow('Med',mvMed,plMed,ddMed);updRow('Tech',mvTech,plTech,ddTech);updRow('Bond',mvBond,plBond,ddBond);
 
-        // 更新预估买入信息
-        ETF_IDS.forEach(id => updateEstimate(id));
-
-        // 估值回撤（持仓+观察）
-        function updateHistDD(shortId, prefix) {
-            const ddEl = document.getElementById(prefix ? `ddHist${prefix}` : `ddHist${shortId}`);
-            const highEl = document.getElementById(prefix ? `histHigh${prefix}` : `histHigh${shortId}`);
-            const priceEl = document.getElementById(prefix ? `price${prefix}` : `price${shortId}`);
-            if (!ddEl || !highEl || !priceEl) return;
-            const highText = highEl.textContent.trim();
-            if (highText === '—' || highText === '' || isNaN(parseFloat(highText))) { ddEl.textContent = 'N/A'; ddEl.style.color = '#718096'; return; }
-            const high = parseFloat(highText);
+        // 估值回撤
+        function updateHistDD(shortId) {
+            const ddEl = document.getElementById(`ddHist${shortId}`);
+            if (!ddEl) return;
+            let histHigh = null;
+            if (typeof AUTO_DATA !== 'undefined') {
+                const key = `high${shortId}`;
+                if (AUTO_DATA[key] !== undefined && AUTO_DATA[key] !== null && AUTO_DATA[key] !== 0) histHigh = AUTO_DATA[key];
+            }
+            if (histHigh === null) {
+                const highEl = document.getElementById(`histHigh${shortId}`);
+                if (highEl) { const t = highEl.textContent.trim(); if (t !== '—' && !isNaN(parseFloat(t))) histHigh = parseFloat(t); }
+            }
+            const priceEl = document.getElementById(`price${shortId}`);
+            if (!priceEl) { ddEl.textContent = '—'; return; }
             const price = parseFloat(priceEl.value);
-            if (isNaN(price) || price <= 0 || high <= 0) { ddEl.textContent = 'N/A'; return; }
-            const drawdown = ((high - price) / high) * 100;
+            if (isNaN(price) || price <= 0) { ddEl.textContent = '—'; return; }
+            if (histHigh === null || histHigh <= 0) { ddEl.textContent = 'N/A'; ddEl.style.color = '#718096'; return; }
+            const drawdown = ((histHigh - price) / histHigh) * 100;
             ddEl.textContent = drawdown.toFixed(1) + '%';
-            ddEl.style.color = drawdown >= 30 ? '#38a169' : (drawdown >= 10 ? '#dd6b20' : '#e53e3e');
+            if (drawdown >= 30) ddEl.style.color = '#38a169';
+            else if (drawdown >= 10) ddEl.style.color = '#dd6b20';
+            else ddEl.style.color = '#e53e3e';
         }
-        ETF_IDS.forEach(id => updateHistDD(id, id));
-        // 观察品种的估值回撤
-        const obsList = getObservedList();
-        obsList.forEach(item => {
-            const ddEl = document.getElementById(`ddHist_obs_${item.id}`);
-            const priceEl = document.getElementById(`price_obs_${item.id}`);
-            if (!ddEl || !priceEl) return;
-            const price = parseFloat(priceEl.value);
-            if (isNaN(price) || price <= 0 || item.high <= 0) { ddEl.textContent = '—'; return; }
-            const drawdown = ((item.high - price) / item.high) * 100;
-            ddEl.textContent = drawdown.toFixed(1) + '%';
-            ddEl.style.color = drawdown >= 30 ? '#38a169' : (drawdown >= 10 ? '#dd6b20' : '#e53e3e');
-        });
+        ETF_IDS.forEach(id => updateHistDD(id));
 
         // 买入检查
         function buyCheck(pf,pe,tr){
@@ -513,27 +374,8 @@
             else if(tr==='below2'){b.innerHTML='<span class="tag tag-danger">禁止</span>';a.textContent='趋势破位';a.style.color='#e53e3e';}
             else{b.innerHTML='<span class="tag tag-neutral">不满足</span>';a.textContent='观望';a.style.color='#4a5568';}
         }
-        buyCheck('300',pe300,trend300);buyCheck('500',pe500,trend500);buyCheck('Med',peMed,trendMed);buyCheck('Tech',peTech,trendTech);
+        buyCheck('300',pe300,trend300); buyCheck('500',pe500,trend500); buyCheck('Med',peMed,trendMed); buyCheck('Tech',peTech,trendTech);
 
-        // 观察品种信号
-        obsList.forEach(item => {
-            const peOk = item.pe < 30, trOk = item.trend === 'above';
-            const peDisplay = document.getElementById(`peDisplay_obs_${item.id}`);
-            const condPe = document.getElementById(`condPe_obs_${item.id}`);
-            const condTrend = document.getElementById(`condTrend_obs_${item.id}`);
-            const both = document.getElementById(`both_obs_${item.id}`);
-            const advice = document.getElementById(`advice_obs_${item.id}`);
-            if (peDisplay) peDisplay.textContent = item.pe + '%';
-            if (condPe) condPe.textContent = peOk ? '✅' : '❌';
-            if (condTrend) condTrend.textContent = trOk ? '✅' : '❌';
-            if (both && advice) {
-                if (peOk && trOk) { both.innerHTML = '<span class="tag tag-success">✓ 满足</span>'; advice.textContent = '可买入'; advice.style.color = '#38a169'; }
-                else if (item.trend === 'below2') { both.innerHTML = '<span class="tag tag-danger">禁止</span>'; advice.textContent = '趋势破位'; advice.style.color = '#e53e3e'; }
-                else { both.innerHTML = '<span class="tag tag-neutral">不满足</span>'; advice.textContent = '观望'; advice.style.color = '#4a5568'; }
-            }
-        });
-
-        // 卖出信号
         const alerts=[];
         function ckDD(n,v,rowId, th1=15, th2=20){
             const r=document.getElementById('row'+rowId);
@@ -542,6 +384,10 @@
             else if(v>=th1){alerts.push({etf:n,msg:`回撤≥${th1}%，一级止损卖一半！`});r.classList.add('blink-row-danger');}
         }
         ckDD('沪深300',dd300,'300'); ckDD('中证500',dd500,'500'); ckDD('医药ETF',ddMed,'Med'); ckDD('半导体ETF',ddTech,'Tech',20,25); ckDD('国债ETF',ddBond,'Bond');
+        if(pe300>=70)alerts.push({etf:'沪深300',msg:'PE分位≥70%'}); if(pe500>=70)alerts.push({etf:'中证500',msg:'PE分位≥70%'});
+        if(peMed>=70)alerts.push({etf:'医药ETF',msg:'PE分位≥70%'}); if(peTech>=70)alerts.push({etf:'半导体ETF',msg:'PE分位≥70%'});
+        if(trend300==='below2')alerts.push({etf:'沪深300',msg:'趋势破位'}); if(trend500==='below2')alerts.push({etf:'中证500',msg:'趋势破位'});
+        if(trendMed==='below2')alerts.push({etf:'医药ETF',msg:'趋势破位'}); if(trendTech==='below2')alerts.push({etf:'半导体ETF',msg:'趋势破位'});
 
         ETF_IDS.forEach(id=>{
             const d=id==='300'?dd300:id==='500'?dd500:id==='Med'?ddMed:id==='Tech'?ddTech:ddBond;
@@ -556,9 +402,7 @@
         });
 
         const sbEl=document.getElementById('stockBondStatus');
-        if(stockRatio>=70)sbEl.innerHTML='<span class="tag tag-danger">⚠ 股票过高≥70%</span>';
-        else if(stockRatio<=50)sbEl.innerHTML='<span class="tag tag-danger">⚠ 股票过低≤50%</span>';
-        else sbEl.innerHTML='<span class="tag tag-success">✓ 正常</span>';
+        if(stockRatio>=70)sbEl.innerHTML='<span class="tag tag-danger">⚠ 股票过高≥70%</span>';else if(stockRatio<=50)sbEl.innerHTML='<span class="tag tag-danger">⚠ 股票过低≤50%</span>';else sbEl.innerHTML='<span class="tag tag-success">✓ 正常</span>';
         document.getElementById('rebalanceStatus').innerHTML=(stockRatio>=70||stockRatio<=50)?'<span class="tag tag-danger">触发！调回60/40</span>':'<span class="tag tag-neutral">未触发</span>';
         document.getElementById('singleLimitStatus').innerHTML=Math.max(mv300,mv500,mvMed,mvTech)>totalAssets*0.1?'<span class="tag tag-warning">⚠ 超10%</span>':'<span class="tag tag-success">✓ 合规</span>';
 
@@ -567,11 +411,28 @@
         else{alertPanel.style.display='none';badge.style.display='none';}
     }
 
-    // ========== 初始化 ==========
+    function applyAutoData(){
+        if(typeof AUTO_DATA !== 'undefined'){
+            if(AUTO_DATA.pe300) document.getElementById('pe300').value=AUTO_DATA.pe300;
+            if(AUTO_DATA.pe500) document.getElementById('pe500').value=AUTO_DATA.pe500;
+            if(AUTO_DATA.peMed) document.getElementById('peMed').value=AUTO_DATA.peMed;
+            if(AUTO_DATA.peTech) document.getElementById('peTech').value=AUTO_DATA.peTech;
+            const setHistHigh = (id, key) => {
+                const el = document.getElementById(`histHigh${id}`);
+                if (el) { const v = AUTO_DATA[key]; el.textContent = (v !== undefined && v !== null && v !== 0) ? v : '—'; }
+            };
+            setHistHigh('300','high300'); setHistHigh('500','high500'); setHistHigh('Med','highMed');
+            setHistHigh('Tech','highTech'); setHistHigh('Bond','highBond');
+            if(AUTO_DATA.trend300) document.getElementById('trend300').value=AUTO_DATA.trend300;
+            if(AUTO_DATA.trend500) document.getElementById('trend500').value=AUTO_DATA.trend500;
+            if(AUTO_DATA.trendMed) document.getElementById('trendMed').value=AUTO_DATA.trendMed;
+            if(AUTO_DATA.trendTech) document.getElementById('trendTech').value=AUTO_DATA.trendTech;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', ()=>{
         buildHoldingsTable();
-        renderObserved();
-        // 如果有 data.js 则应用（保留原有 applyAutoData 逻辑，此处省略以保持简洁）
+        applyAutoData();
         updateAll();
     });
 </script>
