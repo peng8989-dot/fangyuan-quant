@@ -23,9 +23,9 @@ const AUTO_DATA = {
   "highInn": 1.548,
   "trendInn": "above",
   "priceInn": 0.841,
-  "pe1000": 50.0,
+  "pe1000": 0.0,
   "high1000": 2.95,
   "trend1000": "above",
   "price1000": 3.079,
-  "update_time": "2026-09-24 14:41:24"
+  "update_time": "2026-09-25 15:01:15"
 };
